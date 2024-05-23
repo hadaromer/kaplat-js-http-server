@@ -68,10 +68,7 @@ export class BookService {
     }
 
     if (!book.genres.every((genere) => genere === genere.toUpperCase())) {
-      throw new HttpException(
-        `Error: Can't create new Book with lower case geners`,
-        HttpStatus.CONFLICT,
-      );
+      throw new HttpException('', HttpStatus.BAD_REQUEST);
     }
 
     const newBook: Book = {
