@@ -103,15 +103,15 @@ export class BookService {
   }
 
   public updateBookById(id: number, price: number) {
-    if (+price <= 0) {
+    if (price <= 0) {
       throw new HttpException(
         `Error: price update for book ${id} must be a positive integer`,
         HttpStatus.CONFLICT,
       );
     }
-    const book = this.getBookById(+id);
+    const book = this.getBookById(id);
     const oldPrice = book.price;
-    book.price = +price;
+    book.price = price;
 
     return oldPrice;
   }

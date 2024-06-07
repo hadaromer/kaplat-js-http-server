@@ -39,7 +39,7 @@ export class BookController {
 
   @Put()
   public updateBookById(@Query() query: UpadateBookDto) {
-    const lastPrice = this.bookService.updateBookById(query.id, query.price);
+    const lastPrice = this.bookService.updateBookById(+query.id, +query.price);
     return { result: lastPrice };
   }
 }
