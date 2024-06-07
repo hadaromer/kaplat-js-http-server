@@ -1,11 +1,10 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { Book } from './book.interface';
 import { BookDto } from './book.dto';
-//import { BOOKS } from './book.mock';
+import { MAX_YEAR, MIN_YEAR, GENRES } from 'src/utils/constants';
 
 @Injectable()
 export class BookService {
-  private;
   private books = [];
   private nextId = 1;
 
@@ -15,7 +14,7 @@ export class BookService {
 
   public filterBooks(query): Book[] {
     const genres = query?.genres?.split(',');
-    if (genres && !genres.every((genere) => genere === genere.toUpperCase())) {
+    if (genres && !genres.every((genere) => GENRES.includes(genere))) {
       throw new HttpException('', HttpStatus.BAD_REQUEST);
     }
     return this.books.filter((book) => {
@@ -53,7 +52,7 @@ export class BookService {
       );
     }
 
-    if (book.year < 1940 || book.year > 2100) {
+    if (book.year < MIN_YEAR || book.year > MAX_YEAR) {
       throw new HttpException(
         `Error: Can't create new Book that its year [${book.year}] is not in the accepted range [1940 -> 2100]`,
         HttpStatus.CONFLICT,
@@ -67,7 +66,7 @@ export class BookService {
       );
     }
 
-    if (!book.genres.every((genere) => genere === genere.toUpperCase())) {
+    if (!book.genres.every((genere) => GENRES.includes(genere))) {
       throw new HttpException('', HttpStatus.BAD_REQUEST);
     }
 
@@ -105,7 +104,7 @@ export class BookService {
   public updateBookById(id: number, price: number) {
     if (price <= 0) {
       throw new HttpException(
-        `Error: price update for book ${id} must be positive integer`,
+        `Error: price update for book ${id} must be a positive integer`,
         HttpStatus.CONFLICT,
       );
     }

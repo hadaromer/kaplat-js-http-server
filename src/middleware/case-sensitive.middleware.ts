@@ -7,7 +7,7 @@ export function CaseSensitiveMiddleware(
   res: Response,
   next: NextFunction,
 ) {
-  const originalUrl = req.originalUrl;
+  const originalUrl = req.path;
   const method = req.method.toLowerCase();
 
   const routeMatch = CASE_SENSITIVE_ROUTES.find(
