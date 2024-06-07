@@ -10,16 +10,18 @@ import {
   Res,
 } from '@nestjs/common';
 import { BookService } from './book.service';
-import { BookDto } from './book.dto';
+import { BookDto } from './dtos/book.dto';
 import { Response } from 'express';
+import { UpadateBookDto } from './dtos/updateBook.dto';
+import { IdDto } from './dtos/id.dto';
 
 @Controller('book')
 export class BookController {
   constructor(private bookService: BookService) {}
 
   @Get()
-  public getBookById(@Query('id') id: string) {
-    const book = this.bookService.getBookById(parseInt(id));
+  public getBookById(@Query() query: IdDto) {
+    const book = this.bookService.getBookById(+query.id);
     return { result: book };
   }
 
@@ -30,20 +32,14 @@ export class BookController {
   }
 
   @Delete()
-  public deleteBookById(@Query('id') id: string) {
-    const totalBooksAfterDelete = this.bookService.deleteBookById(parseInt(id));
+  public deleteBookById(@Query() query: IdDto) {
+    const totalBooksAfterDelete = this.bookService.deleteBookById(+query.id);
     return { result: totalBooksAfterDelete };
   }
 
   @Put()
-  public updateBookById(
-    @Query('id') id: string,
-    @Query('price') price: string,
-  ) {
-    const lastPrice = this.bookService.updateBookById(
-      parseInt(id),
-      parseInt(price),
-    );
+  public updateBookById(@Query() query: UpadateBookDto) {
+    const lastPrice = this.bookService.updateBookById(query.id, query.price);
     return { result: lastPrice };
   }
 }

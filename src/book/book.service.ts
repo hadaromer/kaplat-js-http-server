@@ -1,7 +1,8 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { Book } from './book.interface';
-import { BookDto } from './book.dto';
+import { BookDto } from './dtos/book.dto';
 import { MAX_YEAR, MIN_YEAR, GENRES } from 'src/utils/constants';
+import { FilterBooksDto } from './dtos/filterBooks.dto';
 
 @Injectable()
 export class BookService {
@@ -12,7 +13,7 @@ export class BookService {
     return this.books;
   }
 
-  public filterBooks(query): Book[] {
+  public filterBooks(query: FilterBooksDto): Book[] {
     const genres = query?.genres?.split(',');
     if (genres && !genres.every((genere) => GENRES.includes(genere))) {
       throw new HttpException('', HttpStatus.BAD_REQUEST);
@@ -102,15 +103,15 @@ export class BookService {
   }
 
   public updateBookById(id: number, price: number) {
-    if (price <= 0) {
+    if (+price <= 0) {
       throw new HttpException(
         `Error: price update for book ${id} must be a positive integer`,
         HttpStatus.CONFLICT,
       );
     }
-    const book = this.getBookById(id);
+    const book = this.getBookById(+id);
     const oldPrice = book.price;
-    book.price = price;
+    book.price = +price;
 
     return oldPrice;
   }
