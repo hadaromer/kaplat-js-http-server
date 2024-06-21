@@ -19,4 +19,6 @@ export const CASE_SENSITIVE_ROUTES = [
   { method: 'get', path: '/book' },
   { method: 'put', path: '/book' },
   { method: 'delete', path: '/book' },
+  { method: 'get', path: '/logs/level' },
+  { method: 'put', path: '/logs/level' },
 ];

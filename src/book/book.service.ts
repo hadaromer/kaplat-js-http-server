@@ -13,6 +13,10 @@ export class BookService {
     return this.books;
   }
 
+  public getTotalBooksCount() {
+    return this.books.length;
+  }
+
   public filterBooks(query: FilterBooksDto): Book[] {
     const genres = query?.genres?.split(',');
     if (genres && !genres.every((genere) => GENRES.includes(genere))) {
@@ -98,8 +102,8 @@ export class BookService {
         HttpStatus.NOT_FOUND,
       );
     }
-    this.books.splice(index, 1);
-    return this.books.length;
+    const deletedBook = this.books.splice(index, 1);
+    return { title: deletedBook[0].title, currentLength: this.books.length };
   }
 
   public updateBookById(id: number, price: number) {
@@ -113,6 +117,6 @@ export class BookService {
     const oldPrice = book.price;
     book.price = price;
 
-    return oldPrice;
+    return { title: book.title, oldPrice: oldPrice };
   }
 }

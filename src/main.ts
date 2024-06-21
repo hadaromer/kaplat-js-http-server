@@ -3,10 +3,12 @@ import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { CaseSensitiveMiddleware } from './middleware/case-sensitive.middleware';
 import { ValidationPipe } from '@nestjs/common';
+import { Logger } from 'winston';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.useGlobalFilters(new GlobalExceptionFilter());
+  const logger = app.get<Logger>('BOOKS_LOGGER');
+  app.useGlobalFilters(new GlobalExceptionFilter(logger));
   app.useGlobalPipes(new ValidationPipe());
   app.use(CaseSensitiveMiddleware);
   await app.listen(8574);
