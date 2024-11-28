@@ -13,7 +13,7 @@ import {
 } from '@nestjs/common';
 import { BookService } from './book.service';
 import { BookDto } from './dtos/book.dto';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 import { UpadateBookDto } from './dtos/updateBook.dto';
 import { IdDto } from './dtos/id.dto';
 import { Logger } from 'winston';
@@ -80,7 +80,7 @@ export class BookController {
       `Update Book id [${query.id}] price to ${query.price} | request #${requestNumber}`,
     );
     this.logger.debug(
-      `Book [${book.title}] price change: ${book.oldPrice} --> ${query.price}`,
+      `Book [${book.title}] price change: ${book.oldPrice} --> ${query.price} | request #${requestNumber}`,
     );
     return { result: book.oldPrice };
   }

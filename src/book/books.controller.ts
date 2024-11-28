@@ -2,6 +2,7 @@ import { Controller, Get, Inject, Query, Req } from '@nestjs/common';
 import { BookService } from './book.service';
 import { FilterBooksDto } from './dtos/filterBooks.dto';
 import { Logger } from 'winston';
+import { Request } from 'express';
 
 @Controller('books')
 export class BooksController {
