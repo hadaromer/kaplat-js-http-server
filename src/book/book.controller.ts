@@ -15,8 +15,9 @@ import { BookService } from './book.service';
 import { BookDto } from './dtos/book.dto';
 import { Response, Request } from 'express';
 import { UpadateBookDto } from './dtos/updateBook.dto';
-import { IdDto } from './dtos/id.dto';
+import { IdDto, IdDtoWithPersistenceMethod } from './dtos/id.dto';
 import { Logger } from 'winston';
+import { PersistenceMethod } from './dtos/persistenceMethods.enum';
 
 @Controller('book')
 export class BookController {
@@ -26,24 +27,30 @@ export class BookController {
   ) {}
 
   @Get()
-  public getBookById(@Query() query: IdDto, @Req() request: Request) {
+  public async getBookById(
+    @Query() query: IdDtoWithPersistenceMethod,
+    @Req() request: Request,
+  ) {
     const requestNumber = request['requestId'];
     this.logger.debug(
       `Fetching book id ${query.id} details | request #${requestNumber}`,
     );
-    const book = this.bookService.getBookById(+query.id);
+    const book = await this.bookService.getBookById(
+      +query.id,
+      query.persistenceMethod as PersistenceMethod,
+    );
     return { result: book };
   }
 
   @Post()
-  createBook(
+  async createBook(
     @Body() book: BookDto,
     @Res() response: Response,
     @Req() request: Request,
   ) {
-    const id = this.bookService.postBook(book);
+    const id = await this.bookService.postBook(book);
 
-    const totalBooks = this.bookService.getTotalBooksCount();
+    const totalBooks: number = await this.bookService.getTotalBooksCount();
     const requestNumber = request['requestId'];
     this.logger.info(
       `Creating new Book with Title [${book.title}] | request #${requestNumber}`,
@@ -57,8 +64,8 @@ export class BookController {
   }
 
   @Delete()
-  public deleteBookById(@Query() query: IdDto, @Req() request: Request) {
-    const res = this.bookService.deleteBookById(+query.id);
+  public async deleteBookById(@Query() query: IdDto, @Req() request: Request) {
+    const res = await this.bookService.deleteBookById(+query.id);
     const requestNumber = request['requestId'];
     this.logger.info(
       `Removing book [${res.title}] | request #${requestNumber}`,
@@ -70,11 +77,11 @@ export class BookController {
   }
 
   @Put()
-  public updateBookById(
+  public async updateBookById(
     @Query() query: UpadateBookDto,
     @Req() request: Request,
   ) {
-    const book = this.bookService.updateBookById(+query.id, +query.price);
+    const book = await this.bookService.updateBookById(+query.id, +query.price);
     const requestNumber = request['requestId'];
     this.logger.info(
       `Update Book id [${query.id}] price to ${query.price} | request #${requestNumber}`,

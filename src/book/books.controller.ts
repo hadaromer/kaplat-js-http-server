@@ -17,11 +17,11 @@ export class BooksController {
   }
 
   @Get('total')
-  public getBooksTotal(
+  public async getBooksTotal(
     @Query() query: FilterBooksDto,
     @Req() request: Request,
   ) {
-    const total = this.bookService.filterBooks(query).length;
+    const total = (await this.bookService.filterBooks(query)).length;
     const requestNumber = request['requestId'];
     this.logger.info(
       `Total Books found for requested filters is ${total} | request #${requestNumber}`,
@@ -30,10 +30,15 @@ export class BooksController {
   }
 
   @Get()
-  public getBooks(@Query() query: FilterBooksDto, @Req() request: Request) {
-    const books = this.bookService.filterBooks(query).sort(function (a, b) {
-      return a.title.toLowerCase().localeCompare(b.title.toLowerCase());
-    });
+  public async getBooks(
+    @Query() query: FilterBooksDto,
+    @Req() request: Request,
+  ) {
+    const books = (await this.bookService.filterBooks(query)).sort(
+      function (a, b) {
+        return a.title.toLowerCase().localeCompare(b.title.toLowerCase());
+      },
+    );
     const requestNumber = request['requestId'];
     this.logger.info(
       `Total Books found for requested filters is ${books.length} | request #${requestNumber}`,

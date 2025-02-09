@@ -1,55 +1,160 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+// import { Book as BookInterface } from './book.interface';
 import { Book } from './book.interface';
+//import { BookPostgres } from './bookPostgres.entity';
+//import { BookMongo } from './bookMongo.entity';
 import { BookDto } from './dtos/book.dto';
 import { MAX_YEAR, MIN_YEAR, GENRES } from 'src/utils/constants';
 import { FilterBooksDto } from './dtos/filterBooks.dto';
+import { Repository } from 'typeorm';
+import { BookPostgres } from './bookPostgres.entity';
+import { BookMongo } from './bookMongo.entity';
+import {
+  PersistenceMethod,
+  PersistenceMethods,
+} from './dtos/persistenceMethods.enum';
 
 @Injectable()
 export class BookService {
-  private books = [];
+  constructor(
+    @Inject('BOOK_REPOSITORY')
+    private bookRepository: Repository<BookPostgres>,
+    @Inject('BOOK_MONGO_REPOSITORY')
+    private mongoRepository: Repository<BookMongo>,
+  ) {
+    this.setNextId();
+  }
+
   private nextId = 1;
 
-  public getBooks() {
-    return this.books;
+  private async setNextId() {
+    const length = await this.bookRepository.count();
+    this.nextId = length + 1;
   }
 
-  public getTotalBooksCount() {
-    return this.books.length;
+  public getTotalBooksCount(): Promise<number> {
+    return this.bookRepository.count();
   }
 
-  public filterBooks(query: FilterBooksDto): Book[] {
-    const genres = query?.genres?.split(',');
-    if (genres && !genres.every((genere) => GENRES.includes(genere))) {
-      throw new HttpException('', HttpStatus.BAD_REQUEST);
+  async filterBooks(query: FilterBooksDto): Promise<Book[]> {
+    const genres = this.validateGenres(query?.genres);
+
+    if (query.persistenceMethod === PersistenceMethods.MONGO) {
+      return await this.filterBooksFromMongo(query, genres);
+    } else {
+      return await this.filterBooksFromPostgres(query, genres);
     }
-    return this.books.filter((book) => {
-      if (
-        query.author &&
-        book.author.toLowerCase() !== query.author.toLowerCase()
-      )
-        return false;
-      if (
-        query['price-bigger-than'] &&
-        book.price < +query['price-bigger-than']
-      )
-        return false;
-      if (query['price-less-than'] && book.price > +query['price-less-than'])
-        return false;
-      if (query['year-bigger-than'] && book.year < +query['year-bigger-than'])
-        return false;
-      if (query['year-less-than'] && book.year > +query['year-less-than'])
-        return false;
-      if (genres && !genres.some((genre) => book.genres.includes(genre)))
-        return false;
-
-      return true;
-    });
   }
 
-  public postBook(book: BookDto) {
-    const existingBook = this.books.find(
-      (b) => b.title.toUpperCase() === book.title.toUpperCase(),
-    );
+  private validateGenres(genresString?: string): string[] | null {
+    if (!genresString) {
+      return null;
+    }
+
+    const genres = genresString.split(',');
+    if (!genres.every((genre) => GENRES.includes(genre))) {
+      throw new HttpException(
+        'Invalid genres provided',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    return genres;
+  }
+
+  private async filterBooksFromPostgres(
+    query: FilterBooksDto,
+    genres: string[] | null,
+  ): Promise<Book[]> {
+    const queryBuilder = this.bookRepository.createQueryBuilder('book');
+
+    if (query.author) {
+      queryBuilder.andWhere('LOWER(book.author) = LOWER(:author)', {
+        author: query.author,
+      });
+    }
+
+    if (query['price-bigger-than']) {
+      queryBuilder.andWhere('book.price >= :priceBiggerThan', {
+        priceBiggerThan: +query['price-bigger-than'],
+      });
+    }
+
+    if (query['price-less-than']) {
+      queryBuilder.andWhere('book.price <= :priceLessThan', {
+        priceLessThan: +query['price-less-than'],
+      });
+    }
+
+    if (query['year-bigger-than']) {
+      queryBuilder.andWhere('book.year >= :yearBiggerThan', {
+        yearBiggerThan: +query['year-bigger-than'],
+      });
+    }
+
+    if (query['year-less-than']) {
+      queryBuilder.andWhere('book.year <= :yearLessThan', {
+        yearLessThan: +query['year-less-than'],
+      });
+    }
+
+    if (genres) {
+      queryBuilder.andWhere('book.genres::jsonb ?| :genres', { genres });
+    }
+
+    const booksData = await queryBuilder.getMany();
+    const books = booksData.map((book) => new Book(book));
+    return books;
+  }
+
+  private async filterBooksFromMongo(
+    query: FilterBooksDto,
+    genres: string[] | null,
+  ): Promise<Book[]> {
+    const mongoQuery: any = {};
+
+    if (query.author) {
+      mongoQuery.author = { $regex: new RegExp(`^${query.author}$`, 'i') };
+    }
+
+    if (query['price-bigger-than']) {
+      mongoQuery.price = {
+        ...mongoQuery.price,
+        $gte: +query['price-bigger-than'],
+      };
+    }
+
+    if (query['price-less-than']) {
+      mongoQuery.price = {
+        ...mongoQuery.price,
+        $lte: +query['price-less-than'],
+      };
+    }
+
+    if (query['year-bigger-than']) {
+      mongoQuery.year = {
+        ...mongoQuery.year,
+        $gte: +query['year-bigger-than'],
+      };
+    }
+
+    if (query['year-less-than']) {
+      mongoQuery.year = { ...mongoQuery.year, $lte: +query['year-less-than'] };
+    }
+
+    if (genres) {
+      mongoQuery.genres = { $in: genres };
+    }
+    const booksData = await this.mongoRepository.find(mongoQuery);
+    const books = booksData.map((book) => new Book(book));
+    return books;
+  }
+
+  public async postBook(book: BookDto) {
+    const existingBook: BookPostgres = await this.bookRepository
+      .createQueryBuilder('book')
+      .where('LOWER(book.title) = LOWER(:title)', { title: book.title })
+      .getOne();
+
     if (existingBook) {
       throw new HttpException(
         `Error: Book with the title [${book.title}] already exists in the system`,
@@ -75,48 +180,74 @@ export class BookService {
       throw new HttpException('', HttpStatus.BAD_REQUEST);
     }
 
-    const newBook: Book = {
-      id: this.nextId++,
+    const newBook: BookPostgres = {
+      rawid: this.nextId++,
       ...book,
     };
-    this.books.push(newBook);
-    return newBook.id;
+
+    await Promise.all([
+      this.bookRepository.save(newBook),
+      this.mongoRepository.save(newBook),
+    ]);
+
+    return newBook.rawid;
   }
 
-  public getBookById(id: number) {
-    const book = this.books.find((book) => book.id === id);
+  public async getBookById(
+    id: number,
+    persistenceMethod: PersistenceMethod = PersistenceMethods.POSTGRES,
+  ): Promise<Book> {
+    let book: BookPostgres | BookMongo;
+
+    if (persistenceMethod === PersistenceMethods.MONGO) {
+      book = await this.mongoRepository.findOneBy({
+        rawid: id,
+      });
+    } else {
+      book = await this.bookRepository.findOneBy({
+        rawid: id,
+      });
+    }
+
     if (!book) {
       throw new HttpException(
         `Error: no such Book with id ${id}`,
         HttpStatus.NOT_FOUND,
       );
     }
-    return book;
+
+    const res: Book = new Book(book);
+
+    return res;
   }
 
-  public deleteBookById(id: number) {
-    const index = this.books.findIndex((book) => book.id === id);
-    if (index === -1) {
-      throw new HttpException(
-        `Error: no such Book with id ${id}`,
-        HttpStatus.NOT_FOUND,
-      );
-    }
-    const deletedBook = this.books.splice(index, 1);
-    return { title: deletedBook[0].title, currentLength: this.books.length };
+  public async deleteBookById(id: number): Promise<any> {
+    const book: Book = await this.getBookById(id);
+
+    await Promise.all([
+      this.bookRepository.delete({ rawid: id }),
+      this.mongoRepository.delete({ rawid: id }),
+    ]);
+
+    const totalBooks: number = await this.getTotalBooksCount();
+    return { title: book.title, currentLength: totalBooks };
   }
 
-  public updateBookById(id: number, price: number) {
+  public async updateBookById(id: number, price: number): Promise<any> {
     if (price <= 0) {
       throw new HttpException(
         `Error: price update for book ${id} must be a positive integer`,
         HttpStatus.CONFLICT,
       );
     }
-    const book = this.getBookById(id);
-    const oldPrice = book.price;
-    book.price = price;
+    const book: Book = await this.getBookById(id);
 
+    await Promise.all([
+      this.bookRepository.update({ rawid: id }, { price }),
+      this.mongoRepository.update({ rawid: id }, { price }),
+    ]);
+
+    const oldPrice = book.price;
     return { title: book.title, oldPrice: oldPrice };
   }
 }

@@ -1,5 +1,12 @@
-import { IsOptional, IsString, IsNumber } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsNumber,
+  IsNotEmpty,
+  IsEnum,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
+import { PersistenceMethods } from './persistenceMethods.enum';
 
 export class FilterBooksDto {
   @IsOptional()
@@ -29,4 +36,8 @@ export class FilterBooksDto {
   @IsOptional()
   @IsString()
   genres?: string;
+
+  @IsNotEmpty()
+  @IsEnum(PersistenceMethods, { each: true })
+  persistenceMethod: string;
 }
